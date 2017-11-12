@@ -1,0 +1,23 @@
+Copied from original G-doc
+
+The goal:
+A purely software based approach to sourcing, valuing and then reselling used cars on the internet, with a minimum of human interaction. Similar to Palantir, the goal of the human would be to verify the actions of the computer, and carry out physical actions, such as inspecting and buying the car.
+
+Envisioned solution:
+A computer program constantly scans online listings for vehicles, determining the make and model, condition, and valuation. When it finds a vehicle it thinks is profitable according to certain threshold to flip (say, $30/hr), it takes action and notifies the action (Lochie) to go and inquire more about the vehicle, with a full set of justification as to the trading decision.
+
+Once the vehicle has been purchased, photographed and registered/inspected, the computer also handles much of the buying process, prospecting buyers and calculating the expected profit. (This is not a primary goal).
+
+Steps in buying well.
+
+Prospecting far and wide and building up a database of vehicle ads
+Determining the make, model and legitimacy of those ads
+Determining the location of those vehicles and the cost of getting to them.
+Determining the valuation of the vehicle from both blue book (NADA, KBB) and market (eBay prices)
+Determining the cost of acquiring the vehicle (registration, inspection, titling, etc) and factoring that in to the margin according to the valuations.
+Notifying the user (Lochie) about the presence of the deal in a timely (<10 minutes) manner.
+Presenting the information about the justification of the deal to the user (Lochie) in a clear, concise, mobile friendly format (chatbot would probably be best).
+
+Names?
+It’s something that’s a wise business pal, also similar to a friend of mine.
+Dough boy! (perfect)
