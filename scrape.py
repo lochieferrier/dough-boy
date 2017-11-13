@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 import requests
 import time
+import dryscrape
 
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
@@ -67,18 +68,25 @@ def valueListing(listingURL):
 
 def getKBBPrice(vehicleURL):
 	driver = webdriver.PhantomJS('phantomjs',service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
-	driver.implicitly_wait(10) # seconds
-	driver.get(vehicleURL)
-	myDynamicElement = driver.find_element_by_id("RangeBox")
-	print myDynamicElement
+	# driver.implicitly_wait(10) # seconds
+	driver.get("https://www.kbb.com/Api/3.8.13.0/62764/vehicle/upa/PriceAdvisor/meter.svg?action=Get&intent=buy-used&pricetype=Private%20Party&zipcode=02215&vehicleid=1728&condition=good&mileage=110010")
+	print driver.page_source
+	# time.sleep(5)
+	# # myDynamicElement = driver.find_element_by_id("RangeBox")
+	# # print myDynamicElement
+	session = dryscrape.Session()
+	session.visit(vehicleURL)
+	response = session.body()
 
-	html = driver.page_source
+	# print response
+	html = response
 
 	# html = '<g xmlns="http://www.w3.org/2000/svg" id="RangeBox" transform="translate(180,113)" data-reactid="50"><path d="m 0,-40 l -87,0 l 0,-42 a 5,5 0 0,1 5,-5 l 164,0 a 5,5 0 0,1 5,5 l 0,42 z" fill="#559c56" stroke="#9BA6B3" stroke-width="1" data-reactid="51"/><path d="m 0,0 l -82,0 a 5,5 0 0,1 -5,-5 l 0,-35 l 174,0 l 0,35 a 5,5 0 0,1 -5,5 z" fill="#ffffff" stroke="#9BA6B3" stroke-width="1" data-reactid="52"/><text text-anchor="middle" font-size="14" font-weight="700" fill="#333333" y="-8" data-reactid="53"><!-- react-text: 54 -->$3,523<!-- /react-text --><tspan font-weight="400" data-reactid="55"> ($70/month)*</tspan></text><text text-anchor="middle" font-size="14" font-weight="400" fill="#333333" y="-26" data-reactid="56">Private Party Value</text><!-- react-text: 57 -->-48<!-- /react-text --><text text-anchor="middle" font-size="20" font-weight="700" fill="#ffffff" y="-48" data-reactid="58"><!-- react-text: 59 -->$3,166 - $4,280<!-- /react-text --></text><!-- react-text: 60 -->-50.8<!-- /react-text --><text text-anchor="middle" font-size="14" font-weight="400" fill="#ffffff" y="-68.8" data-reactid="61">Private Party Range</text></g>'
-	print html
+	# print html
 	print '$3,1' in html
 	soup = BeautifulSoup(html, 'html.parser')
-	g = soup.find_all('g',{'id':'RangeBox'})
+	g = soup.find_all('div',{'id':'priceAdvisor'})
+	data = g['data-config']
 	print g
 
 def getKBBStyles(year,make,model):
