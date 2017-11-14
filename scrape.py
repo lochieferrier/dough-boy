@@ -3,6 +3,7 @@ from selenium import webdriver
 import requests
 import time
 import dryscrape
+import ast
 
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
@@ -43,7 +44,6 @@ def extractListingURLs(baseURL,searchURL):
 	return listingURLs
 
 def valueListing(listingURL):
-	listingURL = "https://worcester.craigslist.org/cto/d/volvo-s40/6381711338.html"
 	r = requests.get(listingURL)
 	data = r.text
 	soup = BeautifulSoup(data,"lxml")
@@ -52,56 +52,116 @@ def valueListing(listingURL):
 	if len(attrs) > 0:
 		typeStr = (attrs[0].find('b').text).lower()
 		splitStr = typeStr.split()
-		year = splitStr[0]
-		make = splitStr[1]
-		model = splitStr[2]
-		# Now we have a car to work with, we need to figure out what type it is to plug into KBB
-		# This is tricky, so we're just going to use the base vehicle.
-		KBBstyles = getKBBStyles(year,make,model)
+		if len(splitStr)==3:
+			year = splitStr[0]
+			make = splitStr[1]
+			model = splitStr[2]
+		
+			# Now we have a car to work with, we need to figure out what type it is to plug into KBB
+			# This is tricky, so we're just going to use the base vehicle.
+			KBBstyles = getKBBStyles(year,make,model)
+		else:
+			# print 'failed to split typestr'
+			year = ""
+			make = ""
+			model = ""
+			KBBstyles = []
 		# These URLs are coming out with a little bad stuff on them, such as a vehicleid, and /options/
 		# which if left unremidied will make KBB ask too many questions
 		# let's fix that
+		if len(KBBstyles) < 1:
+			# print 'triggered google search'
+			# Find what the thing is meant to be named with Google
+			stylesURL = getKBBURLWithGoogle(typeStr)
+			stylesURL = stylesURL.split('/')
+			# print stylesURL
+			if len(stylesURL) == 7:
 
-		# Also, we take the first body style (cheapest option)
-		finalURL = 'https://www.kbb.com/'+make+'/'+model+'/'+year+'/'+KBBstyles[0]+'/?intent=buy-used&pricetype=private-party&condition=good&persistedcondition=good'
-		price = getKBBPrice(finalURL)
-
+				make = stylesURL[3]
+				model = stylesURL[4]
+				year = stylesURL[5]
+				KBBstyles = getKBBStyles(year,make,model)
+				# print 'rigged with google results'
+				# print KBBstyles
+			else:
+				# print 'failed to get KBB from URL'
+				KBBstyles = []
+		if len(KBBstyles) > 0:
+			# Also, we take the first body style (cheapest option)
+			finalURL = 'https://www.kbb.com/'+make+'/'+model+'/'+year+'/'+KBBstyles[0]+'/?intent=buy-used&pricetype=private-party&condition=good&persistedcondition=good'
+			price = getKBBPrice(finalURL)
+			asking = soup.find('span',{'class':'price'})
+			asking = asking.text.replace('$','')
+			asking = int(asking)
+			rego = 135 + asking*0.0625
+			inspection = 35
+			upside = price - asking - rego - inspection
+			return upside
+		else:
+			print 'failed on KBB styles check ' + year + make + model
+			return -99
+	else:
+		return -99
+def getKBBURLWithGoogle(typeStr):
+	r = requests.get("https://www.google.com/search?ei=0HUKWv7dD4WBmQHQgLbgCg&q="+ typeStr+ "+kbb&oq="+typeStr+"+kbb&gs_l=psy-ab.3...748.1248.0.1384.4.4.0.0.0.0.0.0..0.0....0...1.1.64.psy-ab..4.0.0....0.i4xIQXc_4l8")
+	data = r.text
+	soup = BeautifulSoup(data,"html.parser")
+	c = soup.find('cite')
+	return c.text
 def getKBBPrice(vehicleURL):
-	driver = webdriver.PhantomJS('phantomjs',service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
-	# driver.implicitly_wait(10) # seconds
-	driver.get("https://www.kbb.com/Api/3.8.13.0/62764/vehicle/upa/PriceAdvisor/meter.svg?action=Get&intent=buy-used&pricetype=Private%20Party&zipcode=02215&vehicleid=1728&condition=good&mileage=110010")
-	print driver.page_source
 	# time.sleep(5)
 	# # myDynamicElement = driver.find_element_by_id("RangeBox")
 	# # print myDynamicElement
-	session = dryscrape.Session()
-	session.visit(vehicleURL)
-	response = session.body()
-
-	# print response
-	html = response
-
-	# html = '<g xmlns="http://www.w3.org/2000/svg" id="RangeBox" transform="translate(180,113)" data-reactid="50"><path d="m 0,-40 l -87,0 l 0,-42 a 5,5 0 0,1 5,-5 l 164,0 a 5,5 0 0,1 5,5 l 0,42 z" fill="#559c56" stroke="#9BA6B3" stroke-width="1" data-reactid="51"/><path d="m 0,0 l -82,0 a 5,5 0 0,1 -5,-5 l 0,-35 l 174,0 l 0,35 a 5,5 0 0,1 -5,5 z" fill="#ffffff" stroke="#9BA6B3" stroke-width="1" data-reactid="52"/><text text-anchor="middle" font-size="14" font-weight="700" fill="#333333" y="-8" data-reactid="53"><!-- react-text: 54 -->$3,523<!-- /react-text --><tspan font-weight="400" data-reactid="55"> ($70/month)*</tspan></text><text text-anchor="middle" font-size="14" font-weight="400" fill="#333333" y="-26" data-reactid="56">Private Party Value</text><!-- react-text: 57 -->-48<!-- /react-text --><text text-anchor="middle" font-size="20" font-weight="700" fill="#ffffff" y="-48" data-reactid="58"><!-- react-text: 59 -->$3,166 - $4,280<!-- /react-text --></text><!-- react-text: 60 -->-50.8<!-- /react-text --><text text-anchor="middle" font-size="14" font-weight="400" fill="#ffffff" y="-68.8" data-reactid="61">Private Party Range</text></g>'
-	# print html
-	print '$3,1' in html
+	r = requests.get(vehicleURL)
+	html = r.text
 	soup = BeautifulSoup(html, 'html.parser')
 	g = soup.find_all('div',{'id':'priceAdvisor'})
-	data = g['data-config']
-	print g
-
+	if len(g) < 1:
+		return 999999
+	else:
+		data = g[0]['data-config']
+		dataDict = ast.literal_eval(data)
+		priceURL = 'https://www.kbb.com' + dataDict['urls']['private-party']
+		URLarr = priceURL.split('&')
+		vehicleID = URLarr[4].split('=')[1]
+		mileage = URLarr[6].split('=')[1]
+		priceURL = "https://www.kbb.com/Api/3.8.13.0/62764/vehicle/upa/PriceAdvisor/meter.svg?action=Get&intent=buy-used&pricetype=Private%20Party&zipcode=02215&vehicleid="+vehicleID+"&condition=good&mileage="+mileage
+		# r = webdri`ver.PhantomJS('phantomjs',service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
+		r = requests.get(priceURL)
+		html = r.text
+		soup = BeautifulSoup(html,'html.parser')
+		price = soup.find('text',{'data-reactid':'58'})
+		# print html
+		p = price.text.split(' ')[0]
+		p = p.replace(',','')
+		p = p.replace('$','')
+		p = int(p)
+		return p
 def getKBBStyles(year,make,model):
-	r = requests.get('https://www.kbb.com/'+make+'/'+model+'/'+year+'/styles/')
+	# print 'gettingstyle'
+	# print` year + make + model
+	url = 'https://www.kbb.com/'+make+'/'+model+'/'+year+'/styles/'
+	# print url
+	r = requests.get(url)
 	data = r.text
 	soup = BeautifulSoup(data,"lxml")
 	styleElems = soup.find_all('a',{'class':'right btn-main-cta'})
 	styles = []
+	# Maybe we got one of the weird ones where it autoredirects, in this case we want to pull the style from the URL
+
 	for style in styleElems:
 		KBBURL = style['href']
 		styles += [KBBURL.split('/')[4]]
 
+	if len(styleElems) == 0:
+		styleElems = soup.find_all('meta',{'property':'og:url'})
+		styles = [styleElems[0]['content'].split('/')[6]]
 	return styles
 
-# listingURLs = extractListingURLs("https://worcester.craigslist.org","/search/cta?query=volvo&sort=date&searchNearby=2&nearbyArea=59&nearbyArea=4&nearbyArea=239&nearbyArea=451&nearbyArea=281&nearbyArea=686&nearbyArea=44&nearbyArea=249&nearbyArea=250&nearbyArea=169&nearbyArea=198&nearbyArea=168&nearbyArea=3&nearbyArea=354&nearbyArea=338&nearbyArea=38&nearbyArea=378&nearbyArea=93&nearbyArea=173&min_price=100&max_price=3000")
+listingURLs = extractListingURLs("https://worcester.craigslist.org","/search/cta?query=volvo&sort=date&searchNearby=2&nearbyArea=59&nearbyArea=4&nearbyArea=239&nearbyArea=451&nearbyArea=281&nearbyArea=686&nearbyArea=44&nearbyArea=249&nearbyArea=250&nearbyArea=169&nearbyArea=198&nearbyArea=168&nearbyArea=3&nearbyArea=354&nearbyArea=338&nearbyArea=38&nearbyArea=378&nearbyArea=93&nearbyArea=173&min_price=100&max_price=3000")
 # print len(listingURLs)
-
-valueListing('')
+print str(len(listingURLs)) + " vehicles loaded"
+# listingURLs = ['https://westernmass.craigslist.org/cto/d/2000-volvo-v40-90k-999-bo/6383398328.html']
+for listingURL in listingURLs:
+	upside = valueListing(listingURL)
+	print [upside,listingURL]
